@@ -2,12 +2,13 @@
 <RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:em="http://www.mozilla.org/2004/em-rdf#">
   <Description about="urn:mozilla:install-manifest">
-    <em:id>bartablite@philikon.de</em:id>
+    <em:id>bartablitex@szabolcs.hubai</em:id>
     <em:bootstrap>true</em:bootstrap>
     <em:type>2</em:type>
-    <em:name>BarTab Lite</em:name>
-    <em:version>1.2</em:version>
-    <em:creator>Philipp von Weitershausen</em:creator>
+    <em:name>BarTab Lite X</em:name>
+    <em:version>1.3pre</em:version>
+    <em:creator>Szabolcs Hubai</em:creator>
+    <em:contributor>Philipp von Weitershausen (Original Author of BarTab Lite)</em:contributor>
     <em:contributor>Róman Joost (logo)</em:contributor>
     <em:contributor>Erik Vold</em:contributor>
     <!-- Firefox -->
@@ -15,7 +16,7 @@
       <Description>
         <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id> <!-- Firefox -->
         <em:minVersion>4.0</em:minVersion>
-        <em:maxVersion>7.0a1</em:maxVersion>
+        <em:maxVersion>17.0.*</em:maxVersion>
       </Description>
     </em:targetApplication>
   </Description>
