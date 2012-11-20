@@ -12,8 +12,10 @@ Cu.import("resource://gre/modules/AddonManager.jsm");
 let css_uri;
 
 const ONTAB_ATTR = "bartab-ontab";
+const ON_DEMAND_PREF = "browser.sessionstore.restore_on_demand";
+const BACKUP_ON_DEMAND_PREF = "extensions.bartab.backup_on_demand";
 const CONCURRENT_TABS_PREF = "browser.sessionstore.max_concurrent_tabs";
-const BACKUP_PREF = "extensions.bartab.backup_concurrent_tabs";
+const BACKUP_CONCURRENT_PREF = "extensions.bartab.backup_concurrent_tabs";
 const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
 XPCOMUtils.defineLazyServiceGetter(this, "gSessionStore",
@@ -33,11 +35,7 @@ function include(src) {
  * (no default preferences, no chrome manifest)
  */
 function startup(data, reason) {
-  if (!Services.prefs.prefHasUserValue(BACKUP_PREF)) {
-    Services.prefs.setIntPref(
-      BACKUP_PREF, Services.prefs.getIntPref(CONCURRENT_TABS_PREF));
-    Services.prefs.setIntPref(CONCURRENT_TABS_PREF, 0);
-  }
+  setupBackupPref();
 
   if (reason != APP_STARTUP) {
     return;
@@ -60,13 +58,12 @@ function shutdown(data, reason) {
     return;
   }
 
-  if (Services.prefs.prefHasUserValue(BACKUP_PREF)) {
-    Services.prefs.setIntPref(
-      CONCURRENT_TABS_PREF, Services.prefs.getIntPref(BACKUP_PREF));
-    Services.prefs.clearUserPref(BACKUP_PREF);
-  }
+  restoreBackupPref();
 
   unload();
+}
+
+function install(data, reason) {
 }
 
 function loadIntoWindow(win) {
@@ -81,6 +78,41 @@ function loadIntoWindow(win) {
   // Install BarTabLite hook.
   let barTabLite = new BarTabLite(win.gBrowser);
   unload(barTabLite.unload.bind(barTabLite), win);
+}
+
+function setupBackupPref() {
+  let value;
+  let done;
+  if (!Services.prefs.prefHasUserValue(BACKUP_ON_DEMAND_PREF)) {
+    try {
+      value = Services.prefs.getBoolPref(ON_DEMAND_PREF);
+    } catch (e) {};
+    if (typeof(value) !== "undefined") {
+      Services.prefs.setBoolPref(BACKUP_ON_DEMAND_PREF, value);
+      Services.prefs.setBoolPref(ON_DEMAND_PREF, true);
+      done = true;
+    }
+  } else {
+    done = true;
+  }
+  if (!done && !Services.prefs.prefHasUserValue(BACKUP_CONCURRENT_PREF)) {
+    Services.prefs.setIntPref(
+      BACKUP_CONCURRENT_PREF, Services.prefs.getIntPref(CONCURRENT_TABS_PREF));
+    Services.prefs.setIntPref(CONCURRENT_TABS_PREF, 0);
+  }
+}
+
+function restoreBackupPref() {
+  if (Services.prefs.prefHasUserValue(BACKUP_ON_DEMAND_PREF)) {
+    Services.prefs.setBoolPref(
+      ON_DEMAND_PREF, Services.prefs.getBoolPref(BACKUP_ON_DEMAND_PREF));
+    Services.prefs.clearUserPref(BACKUP_ON_DEMAND_PREF);
+  }
+  else if (Services.prefs.prefHasUserValue(BACKUP_CONCURRENT_PREF)) {
+    Services.prefs.setIntPref(
+      CONCURRENT_TABS_PREF, Services.prefs.getIntPref(BACKUP_CONCURRENT_PREF));
+    Services.prefs.clearUserPref(BACKUP_CONCURRENT_PREF);
+  }
 }
 
 
