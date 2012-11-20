@@ -5,3 +5,7 @@
 .tabbrowser-tab[bartab-ontab=true] {
   opacity: .5;
 }
+
+.popup-notification-icon[popupid="bartab-upstream-popup"] {
+  list-style-image: url("resource://bartablite/icon64.png");
+}

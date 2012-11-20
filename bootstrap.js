@@ -11,11 +11,14 @@ Cu.import("resource://gre/modules/AddonManager.jsm");
 // This will contain the file:// uri pointing to bartab.css
 let css_uri;
 
+let skipUpstreamCheck;
+
 const ONTAB_ATTR = "bartab-ontab";
 const ON_DEMAND_PREF = "browser.sessionstore.restore_on_demand";
 const BACKUP_ON_DEMAND_PREF = "extensions.bartab.backup_on_demand";
 const CONCURRENT_TABS_PREF = "browser.sessionstore.max_concurrent_tabs";
 const BACKUP_CONCURRENT_PREF = "extensions.bartab.backup_concurrent_tabs";
+const SKIP_UPSTREAM_CHECK_PREF = "extensions.bartab.skip_upstream_check";
 const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
 XPCOMUtils.defineLazyServiceGetter(this, "gSessionStore",
@@ -37,8 +40,16 @@ function include(src) {
 function startup(data, reason) {
   setupBackupPref();
 
+  // Register the resource://bartablite/ mapping
+  let res = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
+  res.setSubstitution("bartablite", Services.io.newURI(__SCRIPT_URI_SPEC__ + "/../", null, null));
+
   if (reason != APP_STARTUP) {
     return;
+  }
+
+  if (Services.prefs.prefHasUserValue(SKIP_UPSTREAM_CHECK_PREF)) {
+    skipUpstreamCheck = Services.prefs.getBoolPref(SKIP_UPSTREAM_CHECK_PREF);
   }
 
   AddonManager.getAddonByID(data.id, function(addon) {
@@ -50,6 +61,7 @@ function startup(data, reason) {
     // Register BarTabLite handler for all existing windows and windows
     // that will still be opened.
     watchWindows(loadIntoWindow, "navigator:browser");
+    watchWindows(detectUpstream, "navigator:browser");
   });
 }
 
@@ -61,6 +73,10 @@ function shutdown(data, reason) {
   restoreBackupPref();
 
   unload();
+
+  // Clear our resource registration
+  let res = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
+  res.setSubstitution("bartablite", null);
 }
 
 function install(data, reason) {
@@ -113,6 +129,69 @@ function restoreBackupPref() {
       CONCURRENT_TABS_PREF, Services.prefs.getIntPref(BACKUP_CONCURRENT_PREF));
     Services.prefs.clearUserPref(BACKUP_CONCURRENT_PREF);
   }
+}
+
+function detectUpstream(win) {
+  if (skipUpstreamCheck)
+    return;
+
+  skipUpstreamCheck = true;
+
+  function disableExtension(addon) {
+    addon.userDisabled = true;
+  }
+  
+  AddonManager.getAddonByID("bartablite@philikon.de", function(addon){
+    if (addon) {
+      if (addon.isActive) {
+        let { gBrowser, PopupNotifications } = win;
+
+        let disableThat = {
+          label: "Disable the other one!",
+          callback: function() {
+            disableExtension(addon);
+          },
+          accessKey: "D"
+        };
+
+        let disableThis = {
+          label: "Disable this one!",
+          callback: function() {
+            AddonManager.getAddonByID("bartablitex@szabolcs.hubai", function(addon){
+              disableExtension(addon);
+            });
+          },
+          accessKey: "T"
+        };
+
+        let leaveItUp = {
+          label: "Leave it as is!",
+          callback: function() {
+            Services.prefs.setBoolPref(SKIP_UPSTREAM_CHECK_PREF, true);
+          },
+          accessKey: "L"
+        };
+
+        let secondaryActions = [ disableThis, leaveItUp ];
+        
+        let options = {
+          timeout: Date.now() + 30000,
+          persistWhileVisible: true,
+        };
+
+        let message = "An other (maybe the original) version of Bartab Lite is running.\n" +
+          "It's recommended not to run both simultaneously to avoid interfering.\n" +
+          "Should I disable one of them?"
+        ;
+
+        PopupNotifications.show(gBrowser.selectedBrowser, "bartab-upstream-popup",
+          message, null /* anchor ID */,
+          disableThat, secondaryActions,
+          options
+        );
+      }
+    }
+  });
 }
 
 
