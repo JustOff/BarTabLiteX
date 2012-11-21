@@ -211,6 +211,7 @@ BarTabLite.prototype = {
 
     let document = aTabBrowser.ownerDocument;
     let menuitem_unloadTab = document.createElementNS(NS_XUL, "menuitem");
+    menuitem_unloadTab.setAttribute("id", "bartab-unloadtab");
     menuitem_unloadTab.setAttribute("label", "Unload Tab"); // TODO l10n
     menuitem_unloadTab.setAttribute("tbattr", "tabbrowser-multiple");
     menuitem_unloadTab.setAttribute(
@@ -223,6 +224,11 @@ BarTabLite.prototype = {
   unload: function() {
     let tabBrowser = this.tabBrowser;
     tabBrowser.tabContainer.removeEventListener('SSTabRestoring', this, false);
+    let document = tabBrowser.ownerDocument;
+    let menuitem_unloadTab = document.getElementById("bartab-unloadtab");
+    if (menuitem_unloadTab && menuitem_unloadTab.parentNode) {
+      menuitem_unloadTab.parentNode.removeChild(menuitem_unloadTab);
+    }
     delete tabBrowser.BarTabLite;
   },
 
