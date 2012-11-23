@@ -229,6 +229,14 @@ BarTabLite.prototype = {
     if (menuitem_unloadTab && menuitem_unloadTab.parentNode) {
       menuitem_unloadTab.parentNode.removeChild(menuitem_unloadTab);
     }
+    // unhook tabs
+    let tabs = tabBrowser.tabs;
+    for (let index = 0; index < tabs.length; index++) {
+      let tab = tabs[index];
+      if (tab && tab._barTabRestoreProgressListener) {
+        tab._barTabRestoreProgressListener.unhook();
+      }
+    }
     delete tabBrowser.BarTabLite;
   },
 
