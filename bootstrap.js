@@ -219,16 +219,22 @@ BarTabLite.prototype = {
     let tabContextMenu = document.getElementById("tabContextMenu");
     tabContextMenu.insertBefore(menuitem_unloadTab,
                                 tabContextMenu.childNodes[1]);
+    tabContextMenu.addEventListener('popupshowing', this, false);
   },
 
   unload: function() {
     let tabBrowser = this.tabBrowser;
     tabBrowser.tabContainer.removeEventListener('SSTabRestoring', this, false);
     let document = tabBrowser.ownerDocument;
+
+    // remove tab context menu related stuff
     let menuitem_unloadTab = document.getElementById("bartab-unloadtab");
     if (menuitem_unloadTab && menuitem_unloadTab.parentNode) {
       menuitem_unloadTab.parentNode.removeChild(menuitem_unloadTab);
     }
+    let tabContextMenu = document.getElementById("tabContextMenu");
+    tabContextMenu.removeEventListener('popupshowing', this, false);
+
     // unhook tabs
     let tabs = tabBrowser.tabs;
     for (let index = 0; index < tabs.length; index++) {
@@ -245,6 +251,9 @@ BarTabLite.prototype = {
       case 'SSTabRestoring':
         this.onTabRestoring(aEvent);
         return;
+      case 'popupshowing':
+        this.onPopupShowing(aEvent);
+        return;
     }
   },
 
@@ -259,6 +268,26 @@ BarTabLite.prototype = {
     }
     tab.setAttribute(ONTAB_ATTR, "true");
     (new BarTabRestoreProgressListener()).hook(tab);
+  },
+
+  /**
+   * Handle the 'popupshowing' event from "tabContextMenu"
+   * and disable "Unload Tab" if the context menu was opened on a pending tab.
+   */
+  onPopupShowing: function(aEvent) {
+    let tabContextMenu = aEvent.originalTarget;
+    let document = tabContextMenu.ownerDocument;
+    let tab = tabContextMenu.contextTab;
+    tab = tab || tabContextMenu.triggerNode.localName == "tab" ?
+                 tabContextMenu.triggerNode : this.tabBrowser.selectedTab;
+    let menuitem_unloadTab = document.getElementById("bartab-unloadtab");
+    if (menuitem_unloadTab) {
+      if (tab.getAttribute(ONTAB_ATTR) == "true") {
+        menuitem_unloadTab.setAttribute("disabled", "true");
+      } else {
+        menuitem_unloadTab.removeAttribute("disabled");
+      }
+    }
   },
 
   /**
