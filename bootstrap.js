@@ -51,13 +51,13 @@ function startup(data, reason) {
   AddonManager.getAddonByID(data.id, function(addon) {
     css_uri = addon.getResourceURI("bartab.css").spec;
 
-    // include utils.js
-    include(addon.getResourceURI("utils.js").spec);
+    // include pullstarter.js
+    include(addon.getResourceURI("pullstarter.js").spec);
 
     // Register BarTabLite handler for all existing windows and windows
     // that will still be opened.
-    watchWindows(loadIntoWindow, "navigator:browser");
-    watchWindows(detectUpstream, "navigator:browser");
+    PullStarter.watchWindows("navigator:browser", loadIntoWindow);
+    PullStarter.watchWindows("navigator:browser", detectUpstream);
   });
 }
 
@@ -68,7 +68,7 @@ function shutdown(data, reason) {
 
   restoreBackupPref();
 
-  unload();
+  PullStarter.unload();
 
   // Clear our resource registration
   let res = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
@@ -83,13 +83,13 @@ function loadIntoWindow(win) {
   let pi = win.document.createProcessingInstruction(
     "xml-stylesheet", "href=\"" + css_uri + "\" type=\"text/css\"");
   win.document.insertBefore(pi, win.document.firstChild);
-  unload(function () {
+  PullStarter.registerUnloader(function () {
     win.document.removeChild(pi);
   }, win);
 
   // Install BarTabLite hook.
   let barTabLite = new BarTabLite(win.gBrowser);
-  unload(barTabLite.unload.bind(barTabLite), win);
+  PullStarter.registerUnloader(barTabLite.unload.bind(barTabLite), win);
 }
 
 function setupBackupPref() {
