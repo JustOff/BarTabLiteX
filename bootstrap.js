@@ -44,10 +44,6 @@ function startup(data, reason) {
   let res = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
   res.setSubstitution("bartablite", Services.io.newURI(__SCRIPT_URI_SPEC__ + "/../", null, null));
 
-  if (reason != APP_STARTUP) {
-    return;
-  }
-
   if (Services.prefs.prefHasUserValue(SKIP_UPSTREAM_CHECK_PREF)) {
     skipUpstreamCheck = Services.prefs.getBoolPref(SKIP_UPSTREAM_CHECK_PREF);
   }
@@ -207,9 +203,26 @@ BarTabLite.prototype = {
   init: function(aTabBrowser) {
     this.tabBrowser = aTabBrowser;
     aTabBrowser.BarTabLite = this;
-    aTabBrowser.tabContainer.addEventListener('SSTabRestoring', this, false);
-
     let document = aTabBrowser.ownerDocument;
+    document.addEventListener('SSTabRestoring', this, false);
+
+    // hook tabs
+    let tabs = aTabBrowser.tabs;
+    for (let index = 0; index < tabs.length; index++) {
+      let tab = tabs[index];
+      if (tab && !tab.selected && typeof(tab._barTabRestoreProgressListener) !== "function") {
+        let linkedBrowser = tab.linkedBrowser;
+        let tabStillLoading = linkedBrowser.__SS_tabStillLoading ||
+          linkedBrowser.__SS_data && linkedBrowser.__SS_data._tabStillLoading;
+        if (!tabStillLoading) {
+          continue;
+        }
+
+        (new BarTabRestoreProgressListener()).setup(tab);
+      }
+    }
+
+    // add "Unload Tab" menuitem to tab context menu
     let menuitem_unloadTab = document.createElementNS(NS_XUL, "menuitem");
     menuitem_unloadTab.setAttribute("id", "bartab-unloadtab");
     menuitem_unloadTab.setAttribute("label", "Unload Tab"); // TODO l10n
@@ -224,8 +237,8 @@ BarTabLite.prototype = {
 
   unload: function() {
     let tabBrowser = this.tabBrowser;
-    tabBrowser.tabContainer.removeEventListener('SSTabRestoring', this, false);
     let document = tabBrowser.ownerDocument;
+    document.removeEventListener('SSTabRestoring', this, false);
 
     // remove tab context menu related stuff
     let menuitem_unloadTab = document.getElementById("bartab-unloadtab");
@@ -240,7 +253,7 @@ BarTabLite.prototype = {
     for (let index = 0; index < tabs.length; index++) {
       let tab = tabs[index];
       if (tab && tab._barTabRestoreProgressListener) {
-        tab._barTabRestoreProgressListener.unhook();
+        tab._barTabRestoreProgressListener.cleanup();
       }
     }
     delete tabBrowser.BarTabLite;
@@ -266,8 +279,7 @@ BarTabLite.prototype = {
     if (tab.selected || tab.getAttribute(ONTAB_ATTR) == "true") {
       return;
     }
-    tab.setAttribute(ONTAB_ATTR, "true");
-    (new BarTabRestoreProgressListener()).hook(tab);
+    (new BarTabRestoreProgressListener()).setup(tab);
   },
 
   /**
@@ -436,11 +448,20 @@ BarTabRestoreProgressListener.prototype = {
     delete this._tab;
   },
 
+  setup: function(aTab) {
+    aTab.setAttribute(ONTAB_ATTR, "true");
+    this.hook(aTab);
+  },
+
+  cleanup: function() {
+    this._tab.removeAttribute(ONTAB_ATTR);
+    this.unhook();
+  },
+
   /*** nsIWebProgressListener ***/
 
   onStateChange: function (aWebProgress, aRequest, aStateFlags, aStatus) {
-    this._tab.removeAttribute(ONTAB_ATTR);
-    this.unhook();
+    this.cleanup();
   },
   onProgressChange: function () {},
   onLocationChange: function () {},
