@@ -364,15 +364,12 @@ BarTabLite.prototype = {
 
     // unloadTab() mutates the tabs so the only sane thing to do is to
     // copy the list of tabs now and then work off that list.
-    //
-    // Which tab list to copy depends on the pref.
-    //
+    // 
     //TODO can we use Array.slice() here?
     let tabs = [];
     let tabSource = tabbrowser.visibleTabs;
-    if (!tabSource ||
-        (Services.prefs.prefHasUserValue("extensions.bartab.unloadOnlyVisibleTabs") &&
-        !Services.prefs.getBoolPref("extensions.bartab.unloadOnlyVisibleTabs"))) {
+    if (!tabSource) {
+      // Fall back to "all tabs in window" if we don't have Panorama.
       tabSource = tabbrowser.mTabs;
     }
     for (let i = 0; i < tabSource.length; i++) {
