@@ -222,6 +222,9 @@ BarTabLite.prototype = {
       }
     }
 
+    // set up the tab-context-menu menuitems
+    let tabContextMenu = document.getElementById("tabContextMenu");
+
     // add "Unload Tab" menuitem to tab context menu
     let menuitem_unloadTab = document.createElementNS(NS_XUL, "menuitem");
     menuitem_unloadTab.setAttribute("id", "bartab-unloadtab");
@@ -229,9 +232,19 @@ BarTabLite.prototype = {
     menuitem_unloadTab.setAttribute("tbattr", "tabbrowser-multiple");
     menuitem_unloadTab.setAttribute(
       "oncommand", "gBrowser.BarTabLite.unloadTab(gBrowser.mContextTab);");
-    let tabContextMenu = document.getElementById("tabContextMenu");
     tabContextMenu.insertBefore(menuitem_unloadTab,
                                 tabContextMenu.childNodes[1]);
+
+    // add "Unload Other Tabs" menuitem to tab context menu
+    let menuitem_unloadOtherTabs = document.createElementNS(NS_XUL, "menuitem");
+    menuitem_unloadOtherTabs.setAttribute("id", "bartab-unloadothertabs");
+    menuitem_unloadOtherTabs.setAttribute("label", "Unload Other Tabs"); // TODO l10n
+    menuitem_unloadOtherTabs.setAttribute("tbattr", "tabbrowser-multiple");
+    menuitem_unloadOtherTabs.setAttribute(
+      "oncommand", "gBrowser.BarTabLite.unloadOtherTabs(gBrowser.mContextTab);");
+    tabContextMenu.insertBefore(menuitem_unloadOtherTabs,
+                                tabContextMenu.childNodes[2]);
+
     tabContextMenu.addEventListener('popupshowing', this, false);
   },
 
@@ -244,6 +257,10 @@ BarTabLite.prototype = {
     let menuitem_unloadTab = document.getElementById("bartab-unloadtab");
     if (menuitem_unloadTab && menuitem_unloadTab.parentNode) {
       menuitem_unloadTab.parentNode.removeChild(menuitem_unloadTab);
+    }
+    let menuitem_unloadOtherTabs = document.getElementById("bartab-unloadothertabs");
+    if (menuitem_unloadOtherTabs && menuitem_unloadOtherTabs.parentNode) {
+      menuitem_unloadOtherTabs.parentNode.removeChild(menuitem_unloadOtherTabs);
     }
     let tabContextMenu = document.getElementById("tabContextMenu");
     tabContextMenu.removeEventListener('popupshowing', this, false);
