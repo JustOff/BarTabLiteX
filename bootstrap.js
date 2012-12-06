@@ -382,48 +382,116 @@ BarTabLite.prototype = {
    * tabs as a last resort.
    */
   findClosestLoadedTab: function(aTab) {
-    let tabbrowser = this.tabBrowser;
+    let visibleTabs = this.tabBrowser.visibleTabs;
 
     // Shortcut: if this is the only tab available, we're not going to
     // find another active one, are we...
-    if (tabbrowser.mTabs.length == 1) {
+    if (visibleTabs.length == 1) {
       return null;
     }
 
-    // The most obvious choice would be the owner tab, if it's active.
+    // The most obvious choice would be the owner tab, if it's active and is
+    // part of the same tab group.
     if (aTab.owner
         && Services.prefs.getBoolPref("browser.tabs.selectOwnerOnClose")
         && aTab.owner.getAttribute(ONTAB_ATTR) != "true") {
-      return aTab.owner;
+      let i = 0;
+      while (i < visibleTabs.length) {
+        if (visibleTabs[i] == aTab.owner) {
+          return aTab.owner;
+        }
+        i++;
+      }
     }
 
-    // Otherwise walk the tab list and see if we can find an active one.
-    let i = 1;
-    while ((aTab._tPos - i >= 0) ||
-         (aTab._tPos + i < tabbrowser.mTabs.length)) {
-      if (aTab._tPos + i < tabbrowser.mTabs.length) {
-        if (tabbrowser.mTabs[aTab._tPos+i].getAttribute(ONTAB_ATTR) != "true") {
-          return tabbrowser.mTabs[aTab._tPos+i];
+    // Otherwise walk the list of visible tabs and see if we can find an
+    // active one.
+    // To do that, first we need the index of the current tab in the visible-
+    // tabs array.
+    // However, if the current tab is being closed, it's already been removed
+    // from that array. Therefore, we have to also accept its next-higher
+    // sibling, if one is found. If one isn't, then the current tab was at
+    // the end of the visible-tabs array, and the new end-of-array tab is the
+    // best choice for a substitute index.
+    let tabIndex = 0;
+    while (tabIndex + 1 < visibleTabs.length &&
+           visibleTabs[tabIndex] != aTab &&
+           visibleTabs[tabIndex] != aTab.nextSibling) {
+      // This loop will result in tabIndex pointing to one of three places:
+      //    The current tab (visibleTabs[i] == aTab)
+      //    The tab which had one index higher than the current tab, until the
+      //      current tab was closed (visibleTabs[i] == aTab.nextSibling)
+      //    The final tab in the array (tabIndex + 1 == visibleTabs.length)
+      tabIndex++;
+    }
+
+    let i = 0;
+    while ((tabIndex - i >= 0) ||
+           (tabIndex + i < visibleTabs.length)) {
+      let offsetIncremented = 0;
+      if (tabIndex + i < visibleTabs.length) {
+        if (visibleTabs[tabIndex + i].getAttribute(ONTAB_ATTR) != "true" &&
+            visibleTabs[tabIndex + i] != aTab) {
+          // The '!= aTab' test is to rule out the case where i == 0 and
+          // aTab is being unloaded rather than closed, so that tabIndex
+          // points to aTab instead of its nextSibling.
+          return visibleTabs[tabIndex + i];
         }
       }
-      if (aTab._tPos - i >= 0) {
-        if (tabbrowser.mTabs[aTab._tPos-i].getAttribute(ONTAB_ATTR) != "true") {
-          return tabbrowser.mTabs[aTab._tPos-i];
+      if(i == 0 && visibleTabs[tabIndex] != aTab) {
+        // This is ugly, but should work.
+        // If aTab has been closed, and nextSibling is unloaded, then we
+        // have to check previousSibling before the next loop, or we'll take
+        // nextSibling.nextSibling (if loaded) over previousSibling, which is
+        // closer to the true "x.5" tabIndex offset.
+        offsetIncremented = 1;
+        i++;
+      }
+      if (tabIndex - i >= 0) {
+        if(visibleTabs[tabIndex - i].getAttribute(ONTAB_ATTR) != "true" &&
+           visibleTabs[tabIndex - i] != aTab) {
+          return visibleTabs[tabIndex - i];
         }
+      }
+      if(offsetIncremented > 0) {
+        offsetIncremented = 0;
+        i--;
       }
       i++;
     }
 
     // Fallback: there isn't an active tab available, so we're going
     // to have to nominate a non-active one.
-    if (aTab.owner
-        && Services.prefs.getBoolPref("browser.tabs.selectOwnerOnClose")) {
-      return aTab.owner;
+
+    // Start with the owner, if appropriate.
+    if (aTab.owner &&
+        Services.prefs.getBoolPref("browser.tabs.selectOwnerOnClose")) {
+      let i = 0;
+      while (i < visibleTabs.length) {
+        if (visibleTabs[i] == aTab.owner) {
+          return aTab.owner;
+        }
+        i++;
+      }
     }
-    if (aTab.nextSibling) {
-      return aTab.nextSibling;
+    // Otherwise, fall back to one of the adjacent tabs.
+    if (tabIndex < visibleTabs.length &&
+        visibleTabs[tabIndex] != aTab) {
+      // aTab was closed, so the tab at its previous index is the correct
+      // first choice
+      return visibleTabs[tabIndex];
     }
-    return aTab.previousSibling;
+    if (tabIndex + 1 < visibleTabs.length) {
+      return visibleTabs[tabIndex + 1];
+    }
+    if (tabIndex - 1 >= 0) {
+      return visibleTabs[tabIndex - 1];
+    }
+
+    // If we get this far, something's wrong. It shouldn't be possible for
+    // there to not be an adjacent tab unless (visibleTabs.length == 1).
+    Cu.reportError("BarTab Lite X: there are " + visibleTabs.length + " visible tabs, which is greater than 1, but no suitable tab was found from index " + tabIndex);
+    return null;
   }
 };
 
