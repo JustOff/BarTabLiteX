@@ -224,6 +224,7 @@ BarTabLite.prototype = {
 
     // set up the tab-context-menu menuitems
     let tabContextMenu = document.getElementById("tabContextMenu");
+    let context_openTabInWindow = document.getElementById("context_openTabInWindow");
 
     // add "Unload Tab" menuitem to tab context menu
     let menuitem_unloadTab = document.createElementNS(NS_XUL, "menuitem");
@@ -233,7 +234,7 @@ BarTabLite.prototype = {
     menuitem_unloadTab.setAttribute(
       "oncommand", "gBrowser.BarTabLite.unloadTab(gBrowser.mContextTab);");
     tabContextMenu.insertBefore(menuitem_unloadTab,
-                                tabContextMenu.childNodes[1]);
+                                context_openTabInWindow);
 
     // add "Unload Other Tabs" menuitem to tab context menu
     let menuitem_unloadOtherTabs = document.createElementNS(NS_XUL, "menuitem");
@@ -243,7 +244,14 @@ BarTabLite.prototype = {
     menuitem_unloadOtherTabs.setAttribute(
       "oncommand", "gBrowser.BarTabLite.unloadOtherTabs(gBrowser.mContextTab);");
     tabContextMenu.insertBefore(menuitem_unloadOtherTabs,
-                                tabContextMenu.childNodes[2]);
+                                context_openTabInWindow);
+
+    // add a separator to help keep unrelated menu items distinct
+    let menuseparator_BarTabLiteX = document.createElementNS(NS_XUL, "menuseparator");
+    menuseparator_BarTabLiteX.setAttribute("id", "context_BarTabSeparator");
+    menuseparator_BarTabLiteX.setAttribute("tbattr", "tabbrowser-multiple");
+    tabContextMenu.insertBefore(menuseparator_BarTabLiteX,
+                                context_openTabInWindow);
 
     tabContextMenu.addEventListener('popupshowing', this, false);
   },
@@ -261,6 +269,10 @@ BarTabLite.prototype = {
     let menuitem_unloadOtherTabs = document.getElementById("bartab-unloadothertabs");
     if (menuitem_unloadOtherTabs && menuitem_unloadOtherTabs.parentNode) {
       menuitem_unloadOtherTabs.parentNode.removeChild(menuitem_unloadOtherTabs);
+    }
+    let menuseparator_BarTabLiteX = document.getElementById("context_BarTabSeparator");
+    if (menuseparator_BarTabLiteX && menuseparator_BarTabLiteX.parentNode) {
+      menuseparator_BarTabLiteX.parentNode.removeChild(menuseparator_BarTabLiteX);
     }
     let tabContextMenu = document.getElementById("tabContextMenu");
     tabContextMenu.removeEventListener('popupshowing', this, false);
