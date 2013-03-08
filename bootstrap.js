@@ -13,6 +13,7 @@ let css_uri;
 
 let skipUpstreamCheck;
 
+const RESOURCE_NAME = "bartablite";
 const ONTAB_ATTR = "bartab-ontab";
 const ON_DEMAND_PREF = "browser.sessionstore.restore_on_demand";
 const BACKUP_ON_DEMAND_PREF = "extensions.bartab.backup_on_demand";
@@ -42,14 +43,14 @@ function startup(data, reason) {
 
   // Register the resource://bartablite/ mapping
   let res = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
-  res.setSubstitution("bartablite", Services.io.newURI(__SCRIPT_URI_SPEC__ + "/../", null, null));
+  res.setSubstitution(RESOURCE_NAME, Services.io.newURI(__SCRIPT_URI_SPEC__ + "/../", null, null));
 
   if (Services.prefs.prefHasUserValue(SKIP_UPSTREAM_CHECK_PREF)) {
     skipUpstreamCheck = Services.prefs.getBoolPref(SKIP_UPSTREAM_CHECK_PREF);
   }
 
   AddonManager.getAddonByID(data.id, function(addon) {
-    css_uri = addon.getResourceURI("bartab.css").spec;
+    css_uri = "resource://" + RESOURCE_NAME + "/bartab.css";
 
     // include pullstarter.js
     include(addon.getResourceURI("pullstarter.js").spec);
@@ -72,7 +73,7 @@ function shutdown(data, reason) {
 
   // Clear our resource registration
   let res = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
-  res.setSubstitution("bartablite", null);
+  res.setSubstitution(RESOURCE_NAME, null);
 }
 
 function install(data, reason) {
