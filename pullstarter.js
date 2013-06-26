@@ -167,7 +167,7 @@ let PullStarter = {
     }
 
     // Enumerating existing windows.
-    let windows = Services.wm.getEnumerator(type);
+    let windows = Services.wm.getEnumerator(null);
     while (windows.hasMoreElements()) {
       // Only run the watcher immediately if the window is completely loaded
       let window = windows.getNext();
