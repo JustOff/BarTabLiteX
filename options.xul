@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+  <setting type="bool" pref="browser.sessionstore.restore_pinned_tabs_on_demand" title="Allow unloading pinned tabs" desc="Built-in: restore pinned tabs on demand" />
+</vbox>
