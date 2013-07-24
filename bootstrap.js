@@ -213,9 +213,10 @@ BarTabLite.prototype = {
       let tab = tabs[index];
       if (tab && !tab.selected && typeof(tab._barTabRestoreProgressListener) !== "function") {
         let linkedBrowser = tab.linkedBrowser;
-        let tabStillLoading = linkedBrowser.__SS_tabStillLoading ||
+        let tabPending = tab.getAttribute("pending") == "true" || 
+          linkedBrowser.__SS_tabStillLoading ||
           linkedBrowser.__SS_data && linkedBrowser.__SS_data._tabStillLoading;
-        if (!tabStillLoading) {
+        if (!tabPending) {
           continue;
         }
 
