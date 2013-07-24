@@ -15,7 +15,9 @@ let skipUpstreamCheck;
 
 const RESOURCE_NAME = "bartablite";
 const ONTAB_ATTR = "bartab-ontab";
+const PINNEDTAB_ATTR = "pinned";
 const ON_DEMAND_PREF = "browser.sessionstore.restore_on_demand";
+const PINNED_TABS_ON_DEMAND_PREF = "browser.sessionstore.restore_pinned_tabs_on_demand";
 const BACKUP_ON_DEMAND_PREF = "extensions.bartab.backup_on_demand";
 const CONCURRENT_TABS_PREF = "browser.sessionstore.max_concurrent_tabs";
 const BACKUP_CONCURRENT_PREF = "extensions.bartab.backup_concurrent_tabs";
@@ -295,8 +297,11 @@ BarTabLite.prototype = {
     tab = tab || tabContextMenu.triggerNode.localName == "tab" ?
                  tabContextMenu.triggerNode : this.tabBrowser.selectedTab;
     let menuitem_unloadTab = document.getElementById("bartab-unloadtab");
+    let needlessToUnload = tab.getAttribute(ONTAB_ATTR) == "true" || 
+                           tab.getAttribute(PINNEDTAB_ATTR) == "true" &&
+                             !(Services.prefs.getBoolPref(PINNED_TABS_ON_DEMAND_PREF));
     if (menuitem_unloadTab) {
-      if (tab.getAttribute(ONTAB_ATTR) == "true") {
+      if (needlessToUnload) {
         menuitem_unloadTab.setAttribute("disabled", "true");
       } else {
         menuitem_unloadTab.removeAttribute("disabled");
