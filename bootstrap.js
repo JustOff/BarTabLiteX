@@ -15,6 +15,8 @@ let skipUpstreamCheck;
 
 const RESOURCE_NAME = "bartablite";
 const ONTAB_ATTR = "bartab-ontab";
+const PENDINGTAB_ATTR = "pending";
+const INTERESTING_ATTRS = [ONTAB_ATTR, PENDINGTAB_ATTR];
 const PINNEDTAB_ATTR = "pinned";
 const ON_DEMAND_PREF = "browser.sessionstore.restore_on_demand";
 const PINNED_TABS_ON_DEMAND_PREF = "browser.sessionstore.restore_pinned_tabs_on_demand";
@@ -215,13 +217,19 @@ BarTabLite.prototype = {
       let tab = tabs[index];
       if (tab && !tab.selected && typeof(tab._barTabRestoreProgressListener) !== "function") {
         let linkedBrowser = tab.linkedBrowser;
-        let tabPending = tab.getAttribute("pending") == "true" || 
+        let hasPendingAttr = tab.getAttribute(PENDINGTAB_ATTR) == "true";
+        let tabPending = hasPendingAttr ||
           linkedBrowser.__SS_tabStillLoading ||
           linkedBrowser.__SS_data && linkedBrowser.__SS_data._tabStillLoading;
         if (!tabPending) {
           continue;
         }
+        if (hasPendingAttr) {
+          // no need to hook the tab, the "pending" attribute does the work for us
+          continue;
+        }
 
+        // "pending" attribute is not available (see: bugzil.la/682507), let's make our own
         (new BarTabRestoreProgressListener()).setup(tab);
       }
     }
@@ -280,7 +288,7 @@ BarTabLite.prototype = {
    */
   onTabRestoring: function(aEvent) {
     let tab = aEvent.originalTarget;
-    if (tab.selected || tab.getAttribute(ONTAB_ATTR) == "true") {
+    if (tab.selected || this.hasInterestingAttribute(tab)) {
       return;
     }
     (new BarTabRestoreProgressListener()).setup(tab);
@@ -297,7 +305,7 @@ BarTabLite.prototype = {
     tab = tab || tabContextMenu.triggerNode.localName == "tab" ?
                  tabContextMenu.triggerNode : this.tabBrowser.selectedTab;
     let menuitem_unloadTab = document.getElementById("bartab-unloadtab");
-    let needlessToUnload = tab.getAttribute(ONTAB_ATTR) == "true" || 
+    let needlessToUnload = this.hasInterestingAttribute(tab) ||
                            tab.getAttribute(PINNEDTAB_ATTR) == "true" &&
                              !(Services.prefs.getBoolPref(PINNED_TABS_ON_DEMAND_PREF));
     if (menuitem_unloadTab) {
@@ -314,7 +322,7 @@ BarTabLite.prototype = {
    */
   unloadTab: function(aTab) {
     // Ignore tabs that are already unloaded or are on the host whitelist.
-    if (aTab.getAttribute(ONTAB_ATTR) == "true") {
+    if (this.hasInterestingAttribute(aTab)) {
       return;
     }
 
@@ -410,7 +418,7 @@ BarTabLite.prototype = {
     // part of the same tab group.
     if (aTab.owner
         && Services.prefs.getBoolPref("browser.tabs.selectOwnerOnClose")
-        && aTab.owner.getAttribute(ONTAB_ATTR) != "true") {
+        && !this.hasInterestingAttribute(aTab.owner)) {
       let i = 0;
       while (i < visibleTabs.length) {
         if (visibleTabs[i] == aTab.owner) {
@@ -446,7 +454,7 @@ BarTabLite.prototype = {
            (tabIndex + i < visibleTabs.length)) {
       let offsetIncremented = 0;
       if (tabIndex + i < visibleTabs.length) {
-        if (visibleTabs[tabIndex + i].getAttribute(ONTAB_ATTR) != "true" &&
+        if (!this.hasInterestingAttribute(visibleTabs[tabIndex + i]) &&
             visibleTabs[tabIndex + i] != aTab) {
           // The '!= aTab' test is to rule out the case where i == 0 and
           // aTab is being unloaded rather than closed, so that tabIndex
@@ -464,7 +472,7 @@ BarTabLite.prototype = {
         i++;
       }
       if (tabIndex - i >= 0) {
-        if(visibleTabs[tabIndex - i].getAttribute(ONTAB_ATTR) != "true" &&
+        if(!this.hasInterestingAttribute(visibleTabs[tabIndex - i]) &&
            visibleTabs[tabIndex - i] != aTab) {
           return visibleTabs[tabIndex - i];
         }
@@ -508,7 +516,13 @@ BarTabLite.prototype = {
     // there to not be an adjacent tab unless (visibleTabs.length == 1).
     Cu.reportError("BarTab Lite X: there are " + visibleTabs.length + " visible tabs, which is greater than 1, but no suitable tab was found from index " + tabIndex);
     return null;
-  }
+  },
+
+  hasInterestingAttribute: function(aTab) {
+    return INTERESTING_ATTRS.some(function (element) {
+      return aTab.getAttribute(element) == "true";
+    });
+  },
 };
 
 

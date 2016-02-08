@@ -4,6 +4,7 @@
   <Description about="urn:mozilla:install-manifest">
     <em:id>bartablitex@szabolcs.hubai</em:id>
     <em:bootstrap>true</em:bootstrap>
+    <em:multiprocessCompatible>true</em:multiprocessCompatible>
     <em:type>2</em:type>
     <em:name>BarTab Lite X</em:name>
     <em:version>1.8pre</em:version>
